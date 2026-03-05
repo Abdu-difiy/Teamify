@@ -1,0 +1,32 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/errors/failures.dart';
+import '../entities/user.dart';
+
+abstract class AuthRepository {
+  Future<Either<Failure, User>> login({
+    required String email,
+    required String password,
+  });
+    Future<Either<Failure, User>> socialLogin(
+      String token, String provider
+      );
+
+   Future<Either<Failure, User>> register({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+    String? extraField,
+  });
+
+  Future<void> logout();
+}
+
+
+
+
+
+
+
+
+
