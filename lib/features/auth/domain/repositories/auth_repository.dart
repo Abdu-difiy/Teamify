@@ -7,19 +7,24 @@ abstract class AuthRepository {
     required String email,
     required String password,
   });
-    Future<Either<Failure, User>> socialLogin(
-      String token, String provider
-      );
+  
+  Future<Either<Failure, User>> socialLogin(String token, String provider);
 
-   Future<Either<Failure, User>> register({
+  Future<Either<Failure, User>> register({
     required String name,
     required String email,
     required String password,
     required String role,
-    String? extraField,
+    Map<String, dynamic>? extraData, // التعديل هنا
   });
 
   Future<void> logout();
+
+Future<Either<Failure, void>> sendOtp(String email);
+Future<Either<Failure, void>> verifyOtp(String otp);
+Future<Either<Failure, void>> resetPassword(String newPassword);
+
+
 }
 
 

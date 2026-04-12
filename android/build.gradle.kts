@@ -1,3 +1,11 @@
+
+gradle.startParameter.excludedTaskNames.addAll(listOf("wrapper"))
+
+repositories {
+    google()
+    mavenCentral()
+}
+
 allprojects {
     repositories {
         google()

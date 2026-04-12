@@ -6,12 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Core
 import 'package:teamify/core/network/api_client.dart';
 import 'package:teamify/core/storage/token_storage.dart';
-// import 'package:teamify/features/auth/data/google_auth_service.dart';
-import 'package:teamify/features/auth/domain/usecases/AppleLoginUseCase.dart';
-import 'package:teamify/features/auth/domain/usecases/GitHubLoginUseCase.dart';
-import 'package:teamify/features/auth/domain/usecases/GoogleLoginUseCase.dart';
-import 'package:teamify/features/auth/domain/usecases/LinkedinLoginUseCase.dart';
-import 'package:teamify/features/auth/presentation/cubit/login_cubit.dart';
+import 'package:teamify/features/projects/presentation/cubit/activity_cubit.dart';
+import 'package:teamify/features/tasks/presentation/cubit/task_cubit.dart';
 import '../network/dio_client.dart';
 
 // Auth Feature
@@ -22,6 +18,11 @@ import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/check_auth_usecase.dart';
 import '../../features/auth/domain/usecases/logout_usecase.dart';
+import '../../features/auth/domain/usecases/AppleLoginUseCase.dart';
+import '../../features/auth/domain/usecases/GitHubLoginUseCase.dart';
+import '../../features/auth/domain/usecases/GoogleLoginUseCase.dart';
+import '../../features/auth/domain/usecases/LinkedinLoginUseCase.dart';
+import '../../features/auth/presentation/cubit/login_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_guard_cubit.dart';
 
@@ -32,95 +33,147 @@ import 'package:teamify/features/projects/domain/repositories/project_repository
 import 'package:teamify/features/projects/domain/usecases/get_projects_usecase.dart';
 import 'package:teamify/features/projects/presentation/cubit/projects_cubit.dart';
 
+// Forgot Password UseCases
+import '../../features/auth/domain/usecases/send_otp_usecase.dart';
+import '../../features/auth/domain/usecases/verify_otp_usecase.dart';
+import '../../features/auth/domain/usecases/reset_password_usecase.dart';
+
+// Forgot Password Cubit
+import '../../features/auth/presentation/cubit/forgot_password_cubit.dart';
+import 'package:teamify/features/auth/presentation/cubit/forgot_password_cubit.dart';
 final sl = GetIt.instance;
-    // بدون هذين السطرين، عندما يصل البرنامج لسطر `sl<SharedPreferences>()` داخل تعريف الـ `TokenStorage` سيعطيك الخطأ (Bad State) لأنك تطلب شيء لم تضعه في الحقيبة (`GetIt`).
 
 Future<void> init() async {
-final sharedPrefs = await SharedPreferences.getInstance();
+  final sharedPrefs = await SharedPreferences.getInstance();
+
   /// ------------------ Core ------------------
-  sl.registerLazySingleton<SharedPreferences>(() => sharedPrefs);
-  // Dio
-  sl.registerLazySingleton<DioClient>(() => DioClient());
-  sl.registerLazySingleton<Dio>(() => sl<DioClient>().dio);
+  if (!sl.isRegistered<SharedPreferences>()) {
+    sl.registerLazySingleton<SharedPreferences>(() => sharedPrefs);
+  }
 
-  // ApiClient
-  sl.registerLazySingleton<ApiClient>(
-    () => ApiClient(sl<TokenStorage>()),
-  );
+  if (!sl.isRegistered<DioClient>()) {
+    sl.registerLazySingleton<DioClient>(() => DioClient());
+    sl.registerLazySingleton<Dio>(() => sl<DioClient>().dio);
+  }
 
-  // Flutter Secure Storage
-  sl.registerLazySingleton(() => const FlutterSecureStorage());
+  if (!sl.isRegistered<FlutterSecureStorage>()) {
+    sl.registerLazySingleton(() => const FlutterSecureStorage());
+  }
 
-  // Token Storage
-  sl.registerLazySingleton<TokenStorage>(
-    () => TokenStorage(sl<FlutterSecureStorage>(), sl<SharedPreferences>()),
-  );
+  if (!sl.isRegistered<TokenStorage>()) {
+    sl.registerLazySingleton<TokenStorage>(
+      () => TokenStorage(sl<FlutterSecureStorage>(), sl<SharedPreferences>()),
+    );
+  }
 
-  /// ------------------ Auth ------------------
+  if (!sl.isRegistered<ApiClient>()) {
+    sl.registerLazySingleton<ApiClient>(() => ApiClient(sl<TokenStorage>()));
+  }
+
+  /// ------------------ Auth Feature ------------------
   // Data Source
-  sl.registerLazySingleton<AuthRemoteDataSource>(
-    () => AuthRemoteDataSourceImpl(sl<ApiClient>()),
-  );
+  if (!sl.isRegistered<AuthRemoteDataSource>()) {
+    sl.registerLazySingleton<AuthRemoteDataSource>(
+      () => AuthRemoteDataSourceImpl(sl<ApiClient>()),
+    );
+  }
 
   // Repository
-  sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(
-      sl<AuthRemoteDataSource>(),
-      sl<TokenStorage>(),
-    ),
-  );
+  if (!sl.isRegistered<AuthRepository>()) {
+    sl.registerLazySingleton<AuthRepository>(
+      () => AuthRepositoryImpl(sl<AuthRemoteDataSource>(), sl<TokenStorage>()),
+    );
+  }
 
   // UseCases
-  sl.registerLazySingleton(() => RegisterUseCase(sl<AuthRepository>()));
-  sl.registerLazySingleton(() => LoginUseCase(sl<AuthRepository>()));
-  sl.registerLazySingleton(() => CheckAuthUseCase(sl<TokenStorage>()));
-  sl.registerLazySingleton(() => LogoutUseCase(sl<AuthRepository>()));
+  if (!sl.isRegistered<RegisterUseCase>()) {
+    sl.registerLazySingleton(() => RegisterUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(() => LoginUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(() => CheckAuthUseCase(sl<TokenStorage>()));
+    sl.registerLazySingleton(() => LogoutUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(() => GoogleLoginUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(() => AppleLoginUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(
+      () => GitHubLoginUseCase(
+        sl<AuthRepository>(),
+        clientId: 'Ov23lia4pNPPSe1NT3HP',
+        clientSecret: '81e71265d5349df99f1b3ba92f18725b174aec3f',
+        redirectUri: 'teamify://callback',
+      ),
+    );
+    sl.registerLazySingleton(
+      () => LinkedInLoginUseCase(
+        repository: sl<AuthRepository>(),
+        clientId: '77muu1v8zvjdhq',
+        clientSecret: 'WPL_AP1.NlF9lL1aeLV0YV3Q.IzVgFQ==',
+        redirectUri: 'https://github.com/Abdu-difiy',
+      ),
+    );
+  }
+
+  // Auth Cubits
+  if (!sl.isRegistered<AuthCubit>()) {
+    sl.registerFactory(() => AuthCubit(sl<RegisterUseCase>(), sl<TokenStorage>()));
+    sl.registerFactory(() => AuthGuardCubit(sl<CheckAuthUseCase>(), sl<LogoutUseCase>()));
+    sl.registerFactory(
+      () => LoginCubit(
+        sl<LoginUseCase>(),
+        sl<TokenStorage>(),
+        sl<GoogleLoginUseCase>(),
+        sl<GitHubLoginUseCase>(),
+        sl<LinkedInLoginUseCase>(),
+        sl<AppleLoginUseCase>(),
+      ),
+    );    
+  }
+
+  if (!sl.isRegistered<SendOtpUseCase>()) {
+  sl.registerLazySingleton(() => SendOtpUseCase(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => VerifyOtpUseCase(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => ResetPasswordUseCase(sl<AuthRepository>()));
+}
 
 
-  // 🔥 Social Login UseCases (اللي ناقصين)
-  sl.registerLazySingleton(() => GoogleLoginUseCase(sl<AuthRepository>()));
-  sl.registerLazySingleton(() => GitHubLoginUseCase(sl<AuthRepository>() ,
-    clientId: 'Ov23lia4pNPPSe1NT3HP',
-    clientSecret: '81e71265d5349df99f1b3ba92f18725b174aec3f',
-    redirectUri: 'teamify://callback',
-  ), );
- sl.registerLazySingleton(
-  () => LinkedInLoginUseCase(
-    repository: sl<AuthRepository>(),
-    clientId: '77muu1v8zvjdhq',
-    clientSecret: 'WPL_AP1.NlF9lL1aeLV0YV3Q.IzVgFQ==',
-    redirectUri: 'https://github.com/Abdu-difiy',
-  ),
-);
-  sl.registerLazySingleton(() => AppleLoginUseCase(sl<AuthRepository>()));
-
-
-  // Cubits
-  sl.registerFactory(() => AuthCubit(sl<RegisterUseCase>()));
+if (!sl.isRegistered<ForgotPasswordCubit>()) {
   sl.registerFactory(
-    () => AuthGuardCubit(sl<CheckAuthUseCase>(), sl<LogoutUseCase>()),
+    () => ForgotPasswordCubit(
+      sendOtpUseCase: sl(),
+      verifyOtpUseCase: sl(),
+      resetPasswordUseCase: sl(),
+    ),
   );
+}
 
-  sl.registerFactory(
-  () => LoginCubit(sl<LoginUseCase>(), sl<TokenStorage>(), sl<GoogleLoginUseCase>(), sl<GitHubLoginUseCase>(), sl<LinkedInLoginUseCase>(), sl<AppleLoginUseCase>())
-
-  
-);
-
-  /// ------------------ Projects ------------------
+  /// ------------------ Projects Feature ------------------
   // Data Source
-  sl.registerLazySingleton<ProjectRemoteDataSource>(
-    () => ProjectRemoteDataSourceImpl(sl<Dio>()),
-  );
+  if (!sl.isRegistered<ProjectRemoteDataSource>()) {
+    sl.registerLazySingleton<ProjectRemoteDataSource>(
+      () => ProjectRemoteDataSourceImpl(sl<Dio>()),
+    );
+  }
 
   // Repository
-  sl.registerLazySingleton<ProjectRepository>(
-    () => ProjectRepositoryImpl(sl<ProjectRemoteDataSource>()),
-  );
+  if (!sl.isRegistered<ProjectRepository>()) {
+    sl.registerLazySingleton<ProjectRepository>(
+      () => ProjectRepositoryImpl(sl<ProjectRemoteDataSource>()),
+    );
+  }
 
   // UseCase
-  sl.registerLazySingleton(() => GetProjectsUseCase(sl<ProjectRepository>()));
+  if (!sl.isRegistered<GetProjectsUseCase>()) {
+    sl.registerLazySingleton(() => GetProjectsUseCase(sl<ProjectRepository>()));
+  }
 
-  // Cubit
-  sl.registerFactory(() => ProjectsCubit(sl<GetProjectsUseCase>()));
+  // ✅ تسجيل الـ Cubits المتبقية بأمان
+  if (!sl.isRegistered<ProjectsCubit>()) {
+    sl.registerLazySingleton(() => ProjectsCubit(sl()));
+  }
+
+  if (!sl.isRegistered<ActivityCubit>()) {
+    sl.registerLazySingleton(() => ActivityCubit());
+  }
+
+  if (!sl.isRegistered<TaskCubit>()) {
+    sl.registerFactory(() => TaskCubit());
+  }
 }

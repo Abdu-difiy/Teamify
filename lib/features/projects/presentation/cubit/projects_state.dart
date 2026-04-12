@@ -21,6 +21,16 @@ class ProjectsLoaded extends ProjectsState {
   List<Object?> get props => [projects];
 }
 
+/// 🔥 مهم جداً
+class ProjectsSuccess extends ProjectsState {
+  final String message;
+
+  const ProjectsSuccess(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
 class ProjectsError extends ProjectsState {
   final String message;
 

@@ -17,21 +17,25 @@ class LinkedInLoginUseCase {
     required this.redirectUri,
   });
 
-
   Future<Either<Failure, User>> call() async {
     try {
       // افتح صفحة تسجيل الدخول في المتصفح
       final result = await FlutterWebAuth2.authenticate(
         url:
-            "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=r_liteprofile%20r_emailaddress",
-        callbackUrlScheme: redirectUri.split("://")[0],
+            "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&scope=openid%20profile%20email",
+
+        // ✅ ملحوظة: غيرت الـ scope لـ openid profile email لأنها النسخة الأحدث من LinkedIn
+        callbackUrlScheme:
+            "https", // ✅ غيرنا دي لـ https عشان يلقط الرجوع لصفحة الـ GitHub
+
+            // preferEphemeral: true, // ✅ عشان يفتح في وضع التصفح الخفي
       );
 
       // استخرج الكود من الرابط المعاد
       final code = Uri.parse(result).queryParameters['code'] ?? "";
       if (code.isEmpty) throw Exception("LinkedIn login canceled");
 
-      // هنا ممكن تعمل request لـ LinkedIn للحصول على token
+      // الحصول على الـ Token (مؤقتاً Static كما طلبت لمشروعك)
       final token = await getLinkedInToken(code);
 
       return await repository.socialLogin(token, "linkedin");
@@ -40,10 +44,8 @@ class LinkedInLoginUseCase {
     }
   }
 
-  // مثال دالة للحصول على token
   Future<String> getLinkedInToken(String code) async {
-    // هنا هتعمل POST request على https://www.linkedin.com/oauth/v2/accessToken
-    // وتستخرج access_token
-    return "linkedIn_dummy_token"; // مؤقت للتجربة
+    // في الوضع الحقيقي بنعمل POST request هنا
+    return "linkedIn_dummy_token";
   }
 }

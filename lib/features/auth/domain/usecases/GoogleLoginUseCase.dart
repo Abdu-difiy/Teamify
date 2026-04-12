@@ -10,19 +10,29 @@ class GoogleLoginUseCase {
 
   Future<Either<Failure, User>> call() async {
     try {
-      
-      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-      final account = await googleSignIn.signIn();
+      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+
+      // تسجيل خروج (اختياري)
+      await googleSignIn.signOut();
+
+      // تسجيل الدخول
+      final account = await googleSignIn.authenticate();
 
       if (account == null) {
         return Left(ServerFailure("Google login cancelled"));
       }
 
-      final token = (await account.authentication).accessToken ?? "";
+      final googleAuth = account.authentication;
+
+      final String? token = googleAuth.idToken;
+
+      if (token == null) {
+        return Left(ServerFailure("Failed to get ID Token from Google"));
+      }
 
       return await repository.socialLogin(token, "google");
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(ServerFailure("Error: ${e.toString()}"));
     }
   }
 }

@@ -17,15 +17,14 @@ class RegisterUseCase  {
   required String email,
   required String password,
   required String role,
-  String? extraField,
+  Map<String, dynamic>? extraData,
 }) async {
   return repository.register(
     name: name,
     email: email,
     password: password,
     role: role,
-    extraField: extraField,
-  );
+    extraData: extraData,);
 }
 }
 
@@ -34,13 +33,12 @@ class RegisterParams {
   final String email;
   final String password;
   final String role;
-  final String? extraField;
+  final Map<String, dynamic>? extraData;
 
   RegisterParams({
     required this.name,
     required this.email,
     required this.password,
     required this.role,
-    this.extraField,
-  });
+    this.extraData,});
 }

@@ -54,7 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } else {
       await sl<TokenStorage>().saveOnboardingSeen();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRouter.chooseRole);
+      Navigator.pushReplacementNamed(context, AppRouter.login);
     }
   }
 
@@ -82,10 +82,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ? Align(
                         alignment: Alignment.topRight,
                         child: TextButton(
-                          onPressed: () => Navigator.pushReplacementNamed(
-                            context,
-                            AppRouter.chooseRole,
-                          ),
+                          // ... السطر 76 تقريباً
+                          onPressed: () async {
+                            await sl<TokenStorage>().saveOnboardingSeen(); // حفظ الحالة عشان ميرجعش هنا تاني
+                            if (!mounted) return;
+                            Navigator.pushReplacementNamed(
+                              context,
+                              AppRouter.login, // غيرناها من chooseRole لـ login
+                            );
+                          },
                           child: const Text(
                             "Skip",
                             style: TextStyle(

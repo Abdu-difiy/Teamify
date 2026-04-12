@@ -29,16 +29,18 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
 
-  font_awesome_flutter: ^10.7.0
+  pinput: ^6.0.2
+
+  font_awesome_flutter: ^11.0.0
 
   flutter_bloc: ^9.1.1
   flutter:
     sdk: flutter
 
 
-  google_sign_in: ^6.3.0
-  firebase_auth: ^4.15.3
-  firebase_core: ^2.24.2
+  google_sign_in: ^7.2.0
+  firebase_auth: ^6.3.0
+  firebase_core: ^4.6.0
   
   sign_in_with_apple: ^7.0.1
   flutter_web_auth_2: ^5.0.1
@@ -94,7 +96,7 @@ dependencies:
   # ==============================
   # 🔹 File Upload / Picker
   # ==============================
-  file_picker: ^10.3.10
+  file_picker: ^11.0.2
   image_picker: ^1.0.7
 
   # ==============================
@@ -106,6 +108,7 @@ dependencies:
   # 🔹 WebSocket (Chat / Meetings)
   # ==============================
   socket_io_client: ^3.1.4
+  cloud_firestore: ^6.2.0
   # google_sign_in: ^7.2.0
 
 
@@ -141,6 +144,12 @@ flutter:
     - assets/images/Icons/Apple.png
     - assets/images/Icons/Linkedin.png
     - assets/images/Icons/Github.png
+    - assets/images/SignUp/1.png
+    - assets/images/SignUp/2.png
+    - assets/images/SignUp/3.png
+    - assets/images/ForgotPassword/1.png
+    - assets/images/ForgotPassword/2.png
+    - assets/images/ForgotPassword/3.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

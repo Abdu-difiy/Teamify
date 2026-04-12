@@ -1,91 +1,74 @@
 import 'package:dio/dio.dart';
-
 import '../models/user_model.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/errors/exceptions.dart';
 
 abstract class AuthRemoteDataSource {
-  Future<UserModel> login({
-    required String email,
-    required String password,
-
-  });
+  Future<UserModel> login({required String email, required String password});
 
   Future<UserModel> register({
     required String name,
     required String email,
     required String password,
     required String role,
-    String? extraField,
+    Map<String, dynamic>? extraData,
   });
-   Future<UserModel> socialLogin(String token, String provider);
-}
 
+  Future<UserModel> socialLogin(String token, String provider);
+
+  // 🔥 ميثودز نسيان كلمة المرور
+  Future<void> sendOtp(String email);
+  Future<void> verifyOtp(String otp);
+  Future<void> resetPassword(String newPassword);
+}
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final ApiClient apiClient;
 
   AuthRemoteDataSourceImpl(this.apiClient);
-  
 
   @override
   Future<UserModel> login({
     required String email,
     required String password,
   }) async {
-    // try {
-    //   final response = await apiClient.post(
-    //     "https://dummyjson.com/auth/login",
-    //     data: {
-    //       "email": 'abdrhmaan@gmail.com',
-    //       "password": '123456',
-    //       "expiresInMins": 30,
-    //     },
-    //     options: Options(
-    //       headers: {
-    //         "Content-Type": "application/json",
-    //       },
-    //     ),
-    //   );
+    try {
+      await Future.delayed(const Duration(seconds: 1));
 
-    //   final data = response.data;
-
-    //   return UserModel(
-    //     id: data["id"] ?? 0,
-    //     name: 'abdrhman',
-    //     email: 'abdrhmaan@gmail.com',
-    //     role: "user",
-    //     token: data["token"]?.toString() ?? '',
-    //   );
-    // } catch (e) {
-    //   throw Exception("Login failed: ${e.toString()}");
-    // }
-
-     await Future.delayed(const Duration(seconds: 1));
-
-    if (email == "admin@test.com" && password == "123456") {
-      return UserModel(
-        id: 1,
-        name: "Admin User",
-        email: "admin@test.com",
-        role: "user",
-        token: "static_token_123456",
-      );
-    } else {
-      throw Exception("Invalid credentials");
+      if (email == "admin@test.com" && password == "123456") {
+        return UserModel(
+          id: 1,
+          name: "Admin User",
+          email: email,
+          role: "user",
+          token: "static_token_123456",
+        );
+      } else {
+        throw ServerException("Invalid email or password");
+      }
+    } on DioError catch (e) {
+      throw ServerException(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
     }
-    
   }
 
   @override
   Future<UserModel> socialLogin(String token, String provider) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return UserModel(
-      id: 2,
-      name: "Social User",
-      email: "social@test.com",
-      role: "user",
-      token: token,
-    );
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      return UserModel(
+        id: 2,
+        name: "Social User",
+        email: "social@test.com",
+        role: "user",
+        token: token,
+      );
+    } on DioError catch (e) {
+      throw ServerException(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 
   @override
@@ -94,29 +77,59 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
     required String role,
-    String? extraField,
+    Map<String, dynamic>? extraData,
   }) async {
-    final response = await apiClient.post(
-      "https://reqres.in",
-      data: {
-        "name": name,
-        "email": email,
-        "password": password,
-        "role": role,
-        "extraField": extraField,
-      },
-      options: Options(
-        headers: {
-          "x-api-key": "reqres-free-v1",
-        },
-      ),
-    );
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      return UserModel(
+        id: DateTime.now().millisecondsSinceEpoch,
+        name: name,
+        email: email,
+        role: role,
+        token: "fake_token_${DateTime.now().millisecondsSinceEpoch}",
+      );
+    } on DioError catch (e) {
+      throw ServerException(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
 
-    final data = response.data['data'] ?? response.data;
+  // 🔥 Implementation بتاع الـ Forgot Password (Fake حالياً)
 
-    return UserModel.fromJson({
-      ...data,
-      'token': response.data['token'] ?? '',
-    });
+  @override
+  Future<void> sendOtp(String email) async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      // هنا المفروض تنادي الـ API:
+      // await apiClient.post("/auth/forgot-password", data: {"email": email});
+    } catch (e) {
+      throw ServerException("Failed to send OTP");
+    }
+  }
+
+  @override
+  Future<void> verifyOtp(String otp) async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (otp != "1234") { // كود وهمي للتجربة
+         throw ServerException("Invalid OTP code");
+      }
+      // الـ API الحقيقي:
+      // await apiClient.post("/auth/verify-otp", data: {"otp": otp});
+    } catch (e) {
+      throw ServerException(e is ServerException ? e.message : "OTP Verification Failed");
+    }
+  }
+
+  @override
+  Future<void> resetPassword(String newPassword) async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      // الـ API الحقيقي:
+      // await apiClient.post("/auth/reset-password", data: {"password": newPassword});
+    } catch (e) {
+      throw ServerException("Failed to reset password");
+    }
   }
 }

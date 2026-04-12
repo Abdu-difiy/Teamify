@@ -35,6 +35,8 @@ class LoginCubit extends Cubit<AuthState> {
         // تأكد من حفظ التوكن أولاً
         await tokenStorage.saveToken(user.token);
         // ثم أرسل حالة النجاح مع بيانات المستخدم
+        await tokenStorage.saveUserRole(user.role);
+
         emit(AuthSuccess(user: user));
       },
     );
@@ -42,8 +44,12 @@ class LoginCubit extends Cubit<AuthState> {
 
   Future<void> login({required String email, required String password}) async {
     emit(AuthLoading());
-    final result = await loginUseCase(LoginParams(email: email, password: password));
-    await _handleAuthResult(result);
+    try{
+      final result = await loginUseCase(LoginParams(email: email, password: password));
+      await _handleAuthResult(result);
+    } catch (e) {
+      emit(AuthError("An unexpected error occurred. Please try again."));
+    }
   }
 
   Future<void> loginWithGoogle() async {

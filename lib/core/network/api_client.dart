@@ -8,7 +8,7 @@ class ApiClient {
   ApiClient(this.tokenStorage)
       : dio = Dio(
           BaseOptions(
-            baseUrl: "https://my-teamify-api.com/api/v1",
+            baseUrl: "https://reqres.in/api",
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
           ),

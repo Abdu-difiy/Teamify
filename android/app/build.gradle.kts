@@ -1,14 +1,12 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // 1. أضف سطر الـ Google Services هنا
-    id("com.google.gms.google-services") version "4.4.0" apply false
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.example.teamify"
+    namespace = "com.example.android"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,8 +20,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.teamify"
-        minSdk = flutter.minSdkVersion // يفضل رفعه لـ 21 لضمان عمل Firebase بدون مشاكل
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.android"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -31,6 +32,8 @@ android {
 
     buildTypes {
         release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -38,10 +41,4 @@ android {
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    // 2. أضف مكتبات Firebase هنا في نهاية الملف
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-analytics")
 }

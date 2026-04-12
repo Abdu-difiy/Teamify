@@ -13,29 +13,33 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this.remoteDataSource, this.tokenStorage);
 
   @override
-  Future<Either<Failure, User>> register({
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-    String? extraField,
-  }) async {
-    try {
-      final userModel = await remoteDataSource.register(
-        name: name,
-        email: email,
-        password: password,
-        role: role,
-        extraField: extraField,
-      );
+Future<Either<Failure, User>> register({
+  required String name,
+  required String email,
+  required String password,
+  required String role,
+  Map<String, dynamic>? extraData,
+}) async {
+  try {
+    final userModel = await remoteDataSource.register(
+      name: name,
+      email: email,
+      password: password,
+      role: role,
+      extraData: extraData,
+    );
 
-      return Right(userModel);
-    } on DioException catch (e) {
-      return Left(ServerFailure(e.message ?? "Server Error"));
-    } catch (e) {
-      return Left(ServerFailure("Unexpected Error"));
-    }
+    // 🔥 مهم جدًا
+    await tokenStorage.saveToken(userModel.token);
+    await tokenStorage.saveUserRole(role);
+
+    return Right(userModel);
+  } on DioException catch (e) {
+    return Left(ServerFailure(e.message ?? "Server Error"));
+  } catch (e) {
+    return Left(ServerFailure("Unexpected Error"));
   }
+}
 
   @override
   Future<Either<Failure, User>> login({
@@ -79,4 +83,40 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     await tokenStorage.clearToken();
   }
+  @override
+  Future<Either<Failure, void>> sendOtp(String email) async {
+    try {
+      await remoteDataSource.sendOtp(email);
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(ServerFailure(e.message ?? "Failed to send OTP"));
+    } catch (e) {
+      return Left(ServerFailure("Unexpected Error"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> verifyOtp(String otp) async {
+    try {
+      await remoteDataSource.verifyOtp(otp);
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(ServerFailure(e.message ?? "Invalid OTP"));
+    } catch (e) {
+      return Left(ServerFailure("Unexpected Error"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> resetPassword(String newPassword) async {
+    try {
+      await remoteDataSource.resetPassword(newPassword);
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(ServerFailure(e.message ?? "Failed to reset password"));
+    } catch (e) {
+      return Left(ServerFailure("Unexpected Error"));
+    }
+  }
 }
+

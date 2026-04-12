@@ -1,7 +1,13 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teamify/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:teamify/features/auth/presentation/screens/register_screen.dart';
 import 'package:teamify/features/auth/presentation/cubit/auth_guard_cubit.dart';
 import 'package:teamify/features/auth/presentation/cubit/login_cubit.dart';
+import 'package:teamify/features/auth/presentation/screens/login_screen.dart';
+import 'package:teamify/features/projects/presentation/cubit/activity_cubit.dart';
+import 'package:teamify/firebase_options.dart';
 // import 'package:provider/provider.dart';
 // import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 // import 'package:teamify/features/auth/presentation/screens/choose_role_screen.dart';
@@ -21,10 +27,21 @@ import 'package:teamify/features/auth/presentation/cubit/login_cubit.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/di/service_locator.dart';
+import 'package:teamify/features/tasks/presentation/cubit/task_cubit.dart';
+import 'package:teamify/features/projects/presentation/cubit/projects_cubit.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+// لو الـ Options مش موجودة، ممكن نكتفي بـ Firebase.initializeApp() مؤقتاً
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await init();
-  
+
   runApp(
     MultiBlocProvider(
       providers: [
@@ -34,6 +51,19 @@ void main() async {
         BlocProvider<LoginCubit>(
         create: (_) => sl<LoginCubit>(),
       ),
+        BlocProvider<AuthCubit>(
+          create: (_) => sl<AuthCubit>(),
+        ),
+        BlocProvider<TaskCubit>(
+          create: (_) => sl<TaskCubit>()..getHomeTasks(),
+        ),
+        BlocProvider<ProjectsCubit>(
+          create: (_) => sl<ProjectsCubit>()..fetchProjects(),
+        ),
+        BlocProvider<ActivityCubit>(
+          create: (_) => sl<ActivityCubit>()..getActivities(),
+        ),
+
       ],
       child: const MyApp(),
     ),
@@ -49,6 +79,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       onGenerateRoute: AppRouter.onGenerateRoute,
       initialRoute: AppRouter.splash,
+      routes:{
+        '/': (context) => const LoginScreen(),
+        '/signup': (context) =>  RegisterScreen(),
+      }
     );
   }
 }

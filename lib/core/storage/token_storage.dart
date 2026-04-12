@@ -40,7 +40,7 @@ class TokenStorage {
     await _prefs.setString(_roleKey, role);
   }
 
-  String? getUserRole() {
+  Future<String?> getUserRole() async {
     return _prefs.getString(_roleKey);
   }
 
@@ -49,4 +49,12 @@ class TokenStorage {
     await _secureStorage.deleteAll();
     await _prefs.clear();
   }
+
+  Future<void> saveUserName(String name) async {
+  await _secureStorage.write(key: 'user_name', value: name);
+}
+
+Future<String?> getUserName() async {
+  return await _secureStorage.read(key: 'user_name');
+}
 }
