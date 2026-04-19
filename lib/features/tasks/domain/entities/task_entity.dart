@@ -26,7 +26,7 @@ final String? priority;
   });
 
   // 🔥 ميثود الـ copyWith ضرورية جداً للتحديث الاحترافي
-  TaskEntity copyWith({bool? isCompleted, String? title, String? delayPercent}) {
+  TaskEntity copyWith({bool? isCompleted, String? title, String? delayPercent , String? assignedUser, String? priority}) {
     return TaskEntity(
       id: id,
       title: title ?? this.title,
@@ -36,11 +36,14 @@ final String? priority;
       tag: tag,
       projectId: projectId,
       projectName: projectName,
+      assignedUser: assignedUser,
+      priority: priority,
+      
     );
   }
 
   factory TaskEntity.fromMap(Map<String, dynamic> map) {
-    return TaskEntity(
+   return TaskEntity(
       id: map['id'] ?? '',
       title: map['title'] ?? '',
       date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
@@ -48,7 +51,13 @@ final String? priority;
       projectId: map['projectId'] ?? '',
       projectName: map['projectName'] ?? '',
       isCompleted: map['isCompleted'] ?? false,
-      delayPercent: map['delayPercent'] ?? '0',
+      // معالجة ذكية للـ delayPercent سواء كانت String أو int
+      delayPercent: (map['delayPercent'] ?? 0) is String 
+          ? int.parse(map['delayPercent']) 
+          : (map['delayPercent'] ?? 0),
+      delayProbability: map['delayProbability'] ?? 0,
+      assignedUser: map['assignedUser'],
+      priority: map['priority'],
     );
   }
 
@@ -62,6 +71,9 @@ final String? priority;
       'projectName': projectName,
       'isCompleted': isCompleted,
       'delayPercent': delayPercent,
+      'delayProbability': delayProbability,
+      'assignedUser': assignedUser,
+      'priority': priority,
     };
   }
 }

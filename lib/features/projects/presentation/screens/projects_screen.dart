@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:teamify/features/home/presentation/widgets/project_card.dart';
 import 'package:teamify/features/tasks/presentation/pages/add_project_screen.dart';
+
+import '../cubit/projects_cubit.dart';
+import '../cubit/projects_state.dart';
+import '../../domain/entities/project.dart';
 
 class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key});
@@ -10,7 +16,14 @@ class ProjectsScreen extends StatefulWidget {
 }
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
-  bool isShowingActive = true; // للتبديل بين Active و Complete
+  bool isShowingActive = true;
+  String searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ProjectsCubit>().fetchProjects();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,49 +32,118 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const Icon(Icons.arrow_back_ios, color: Color(0xFF4384B6), size: 20),
-        title: const Text("Projects", style: TextStyle(color: Color(0xFF0D3B66), fontWeight: FontWeight.bold)),
+        leading: const Icon(
+          Icons.arrow_back_ios,
+          color: Color(0xFF4384B6),
+          size: 20,
+        ),
+        title: const Text(
+          "Projects",
+          style: TextStyle(
+            color: Color(0xFF0D3B66),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
       ),
+
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4384B6),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddProjectScreen()),
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            // Search Bar
+            // 🔍 SEARCH
             TextField(
+              onChanged: (val) {
+                setState(() {
+                  searchQuery = val.toLowerCase();
+                });
+              },
               decoration: InputDecoration(
-                hintText: "Search Projects....",
+                hintText: "Search Projects...",
                 prefixIcon: const Icon(Icons.search, color: Color(0xFF0D3B66)),
                 filled: true,
                 fillColor: Colors.white,
-                // border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)0)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
+
             const SizedBox(height: 20),
-            // Custom Tabs
+
+            // 🔄 TABS
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildTab("Active", isShowingActive, () => setState(() => isShowingActive = true)),
+                _buildTab(
+                  "Active",
+                  isShowingActive,
+                  () => setState(() => isShowingActive = true),
+                ),
                 const SizedBox(width: 10),
-                _buildTab("Complete", !isShowingActive, () => setState(() => isShowingActive = false)),
+                _buildTab(
+                  "Complete",
+                  !isShowingActive,
+                  () => setState(() => isShowingActive = false),
+                ),
               ],
             ),
+
             const SizedBox(height: 20),
-            // Projects List
+
+            // 📊 PROJECTS LIST
             Expanded(
-              child: ListView(
-                children: [
-                  if (isShowingActive) ...[
-                    // بيانات تجريبية مطابقة للصورة
-                    ProjectCard(project: ProjectModel("Website Redesign", "Tech Crop", 75, "Jan, 15", "Low Risk")),
-                    ProjectCard(project: ProjectModel("Mobile App Development", "Start UP", 45, "Jan, 20", "High Risk")),
-                    ProjectCard(project: ProjectModel("Band Identity", "Fashion Crop", 90, "Jan, 10", "Low Risk")),
-                  ] else ...[
-                    ProjectCard(project: ProjectModel("Website Redesign", "Tech Crop", 100, "Jan, 15", "Low Risk")),
-                    _buildNewProjectButton(context), // الزرار اللي في الصورة 3
-                  ],
-                ],
+              child: BlocBuilder<ProjectsCubit, ProjectsState>(
+                builder: (context, state) {
+                  final List<Project> projects = context
+                      .read<ProjectsCubit>()
+                      .projectsList;
+
+                  if (state is ProjectsLoading && projects.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (projects.isEmpty) {
+                    return const Center(child: Text("No Projects yet"));
+                  }
+
+                  // 🔍 FILTER
+                  List<Project> filtered = projects.where((p) {
+                    final matchesSearch = p.name.toLowerCase().contains(
+                      searchQuery,
+                    );
+
+                    final isActive = (p.status ?? "Active") == "Active";
+
+                    return matchesSearch &&
+                        (isShowingActive ? isActive : !isActive);
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    return const Center(child: Text("No matching projects"));
+                  }
+
+                  return ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final Project projectItem = filtered[i];
+
+                      return ProjectCard(project: projectItem);
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -70,39 +152,28 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
+  // =========================
+  // 🔘 TAB WIDGET
+  // =========================
   Widget _buildTab(String label, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF4384B6) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: const Color(0xFF4384B6)),
         ),
-        child: Text(label, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFF4384B6), fontWeight: FontWeight.bold)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF4384B6),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
-
-  Widget _buildNewProjectButton(BuildContext context) {
-          return ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddProjectScreen()),
-              );
-            },
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text("New Project", style: TextStyle(color: Colors.white)),
-            // ... باقي الـ style
-          );
-        }
-        }
-
-// Model بسيط لتجربة الكود
-class ProjectModel {
-  final String name, client, date, risk;
-  final int progress;
-  ProjectModel(this.name, this.client, this.progress, this.date, this.risk);
 }

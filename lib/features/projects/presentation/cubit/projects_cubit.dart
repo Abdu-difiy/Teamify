@@ -1,22 +1,24 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teamify/features/projects/domain/usecases/add_project_usecase.dart';
 import '../../domain/usecases/get_projects_usecase.dart';
 import '../../domain/entities/project.dart';
 import 'projects_state.dart';
 
 class ProjectsCubit extends Cubit<ProjectsState> {
   final GetProjectsUseCase getProjectsUseCase;
+  final AddProjectUseCase addProjectUseCase;
 
-  ProjectsCubit(this.getProjectsUseCase) : super(ProjectsInitial());
+  ProjectsCubit({
+    required this.getProjectsUseCase,
+    required this.addProjectUseCase,
+  }) : super(ProjectsInitial());
 
   final List<Project> _projects = [];
+  List<Project> get projectsList => _projects;
 
-  // 🔥 السطر ده هو اللي هيحل مشكلة الـ Getter في الـ HomeScreen
-  List<Project> get projectsList => _projects; 
-
+  // 1. جلب المشاريع من السيرفر
   Future<void> fetchProjects() async {
-    if (_projects.isEmpty) {
-      emit(ProjectsLoading());
-    }
+    emit(ProjectsLoading());
 
     final result = await getProjectsUseCase();
 
@@ -30,6 +32,7 @@ class ProjectsCubit extends Cubit<ProjectsState> {
     );
   }
 
+  // 2. إضافة مشروع جديد
   Future<void> addProject({
     required String name,
     required String description,
@@ -39,9 +42,9 @@ class ProjectsCubit extends Cubit<ProjectsState> {
     required List<String> members,
   }) async {
     final newProject = Project(
+      id: '', // السيرفر هو اللي هيدينا الـ ID
       name: name,
       description: description,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
       startDate: startDate,
       endDate: endDate,
       status: status,
@@ -49,12 +52,16 @@ class ProjectsCubit extends Cubit<ProjectsState> {
       progress: 0,
     );
 
-    _projects.insert(0, newProject);
+    // نبعت للسيرفر
+    final result = await addProjectUseCase(newProject);
 
-    // نبعت الحالة الجديدة بالقائمة المحدثة
-    emit(ProjectsLoaded(List.from(_projects)));
-
-    // نبعت حالة النجاح عشان لو عايز تظهر SnackBar أو أي أكشن تاني
-    emit(const ProjectsSuccess("Project Created Successfully"));
+    result.fold(
+      (failure) => emit(ProjectsError(failure.message)),
+      (_) async {
+        // ✅ النجاح الحقيقي: روح هات البيانات الجديدة من السيرفر عشان تظهر في القائمة
+        emit(const ProjectsSuccess("Project Created Successfully"));
+        await fetchProjects(); 
+      },
+    );
   }
 }

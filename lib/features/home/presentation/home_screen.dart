@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import 'package:teamify/features/projects/domain/usecases/get_projects_usecase.dart';
-import 'package:teamify/features/projects/presentation/screens/project_details_screen.dart'; 
+import 'package:teamify/features/ai/presentation/screens/ai_assistant_screen.dart';
+import 'package:teamify/features/projects/domain/entities/project.dart';
+import 'package:teamify/features/projects/presentation/screens/project_details_screen.dart';
+import 'package:teamify/features/tasks/presentation/pages/insights_screen.dart';
 import '../../tasks/presentation/cubit/task_cubit.dart';
 import '../../tasks/presentation/cubit/task_state.dart';
 import '../../tasks/domain/entities/task_entity.dart';
 import '../../projects/presentation/cubit/projects_cubit.dart';
 import '../../projects/presentation/cubit/projects_state.dart';
 import '../../projects/presentation/screens/projects_screen.dart';
-
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -23,23 +23,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  final Color primaryColor = const Color(0xFF0D3B66);
+  final Color scaffoldBg = const Color(0xFFFBFDFF);
 
   @override
   void initState() {
     super.initState();
-    // بننادي التاسكات عادي
-    context.read<TaskCubit>().getHomeTasks();
-    
-    // 🔥 التعديل الأهم: لو الكيوبيت فيه مشاريع فعلاً، متعملش fetch وتصفرها
-    // final projectsCubit = context.read<ProjectsCubit>();
-    // if (projectsCubit.state is! ProjectsLoaded) {
-    //   projectsCubit.fetchProjects();
-    // }
+    _loadData();
   }
 
-  bool _isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+  void _loadData() {
+    context.read<TaskCubit>().getHomeTasks();
+    context.read<ProjectsCubit>().fetchProjects();
   }
 
   @override
@@ -47,151 +42,112 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Widget> pages = [
       _buildHomeContent(),
       const ProjectsScreen(),
-      const Center(child: Text("Tasks Screen")), 
+      const InsightsScreen(),
+      // const Center(child: Text("Tasks Screen")),
       const Center(child: Text("Chat Screen")),
       const Center(child: Text("Profile Screen")),
+      
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBFDFF),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: pages,
-      ),
+      backgroundColor: scaffoldBg,
+      body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
-                 Widget _buildHomeContent() {
-  return SafeArea(
-    child: RefreshIndicator(
-      onRefresh: () async {
-        context.read<TaskCubit>().getHomeTasks();
-        context.read<ProjectsCubit>().fetchProjects();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _header(),
-            const SizedBox(height: 25),
 
-            // ✅ رجعنا الـ Stats مكانها وخليناها ديناميكية
-            BlocBuilder<TaskCubit, TaskState>(
-              builder: (context, state) {
-                final allTasks = context.read<TaskCubit>().tasksList;
-                return Row(
-                  children: [
-                    _statCard("Total Tasks", allTasks.length.toString()),
-                    _statCard("Tasks Due Today", allTasks.where((t) => _isToday(t.date)).length.toString()),
-                    _statCard("Overdue Tasks", "0"), // تقدر تعدلها لاحقاً
-                  ],
-                );
-              },
-            ),
-
-            const SizedBox(height: 30),
-
-            // ✅ قسم التاسكات (Tasks Due Soon)
-            const Text("Tasks Due Soon",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D3B66))),
-            const SizedBox(height: 15),
-            
-            BlocBuilder<TaskCubit, TaskState>(
-              builder: (context, state) {
-                final allTasks = context.read<TaskCubit>().tasksList;
-
-                if (allTasks.isNotEmpty) {
-                  return Column(
-                    children: allTasks.take(3).map((t) => _buildTaskCard(t)).toList(),
-                  );
-                } 
-
-                if (state is TaskLoading && allTasks.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text("No tasks due soon", style: TextStyle(color: Colors.grey)),
-                );
-              },
-            ),
-
-            const SizedBox(height: 30),
-
-            // ✅ قسم المشاريع (Active Projects)
-            const Text("Active Projects",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D3B66))),
-            const SizedBox(height: 15),
-            SizedBox(
-              height: 170,
-              child: BlocBuilder<ProjectsCubit, ProjectsState>(
-                // 🔥 السطر ده بيضمن إن الـ UI ميفضاش لما الحالة تبقى Success
-                buildWhen: (prev, current) => current is ProjectsLoaded || current is ProjectsLoading,
-                builder: (context, state) {
-                  // ✅ هات اللستة من الـ Cubit بس اتأكد إن الـ Builder شغال بالـ state
-                  final projects = context.read<ProjectsCubit>().projectsList;
-
-                  if (state is ProjectsLoading && projects.isEmpty) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (projects.isEmpty) return const Center(child: Text("No Projects yet"));
-
-                 return ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: projects.length,
-                  itemBuilder: (context, index) {
-                    final project = projects[index];
-                    // تأكد إن _buildProjectCard بياخد الـ project كـ Object
-                    return _buildProjectCard(project);
-                  },
-              );
-                },
-              ),
-            ),
-            
-            const SizedBox(height: 30),
-            
-            // ✅ قسم النشاطات (Recent Activity)
-            const Text("Recent Activity",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D3B66))),
-            const SizedBox(height: 15),
-            _activityItem(Icons.check_circle_outline, Colors.blue.shade100, "You completed Assignment: Flutter UI", "1 hour ago"),
-            _activityItem(Icons.cloud_upload_outlined, Colors.blue.shade50, "Teamify project updated", "2 hours ago"),
-          ],
+  Widget _buildHomeContent() {
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: () async => _loadData(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              _buildHeader(),
+              const SizedBox(height: 25),
+              _buildQuickStats(),
+              const SizedBox(height: 30),
+              _buildTasksSection(),
+              const SizedBox(height: 30),
+              _buildProjectsSection(),
+              const SizedBox(height: 30),
+              _buildRecentActivitySection(),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  // --- Widgets البناء الفرعية ---
-
-  Widget _header() {
+  // --- Header ---
+  Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text("Hi, ${widget.userName} 👋",
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0D3B66))),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  "Hi, ${widget.userName}",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                const Text("👋", style: TextStyle(fontSize: 24)),
+              ],
+            ),
+          ],
+        ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFEAF3FB),
+            color: Colors.blue.withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(widget.role, style: const TextStyle(color: Color(0xFF4384B6), fontWeight: FontWeight.w600)),
-        )
+          child: Text(
+            widget.role,
+            style: const TextStyle(
+              color: Colors.blueGrey,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _statCard(String title, String value) {
+  // --- Quick Stats ---
+  Widget _buildQuickStats() {
+    return BlocBuilder<TaskCubit, TaskState>(
+      builder: (context, state) {
+        final cubit = context.read<TaskCubit>();
+        return Row(
+          children: [
+            _statCard("Total Tasks", "${cubit.tasksList.length}"),
+            const SizedBox(width: 10),
+            _statCard("Tasks Due Today", "5"), // Placeholder logic
+            const SizedBox(width: 10),
+            _statCard("Overdue Tasks", "${cubit.lateTasks.length}"),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _statCard(String label, String value) {
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
@@ -199,232 +155,322 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Column(
           children: [
-            Text(title, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600),
+            ),
             const SizedBox(height: 8),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0D3B66))),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-Widget _buildProjectCard(dynamic project) {
-  return InkWell(
-    onTap: () {
-      // 🔥 الانتقال لصفحة التفاصيل مع تمرير بيانات المشروع
-      Navigator.pushNamed(
-        context,
-        '/project-details',
-        arguments: project,
-      );
-    },
-    borderRadius: BorderRadius.circular(15), // عشان تأثير الضغطة ميعملش "border" حاد
-    child: Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 15),
+  // --- Tasks Section ---
+  Widget _buildTasksSection() {
+    return BlocBuilder<TaskCubit, TaskState>(
+      builder: (context, state) {
+        final tasks = context.read<TaskCubit>().tasksList.take(3).toList();
+        return Column(
+          children: tasks.map((task) => _buildTaskItem(task)).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildTaskItem(TaskEntity task) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.blue.shade100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            project.name,
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D3B66)),
-            maxLines: 1, // عشان الاسم ميكسرش السطر لو طويل
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: (project.progress ?? 0) / 100,
-            backgroundColor: Colors.grey.shade100,
-            color: const Color(0xFF4384B6),
-            minHeight: 6,
-          ),
-          const SizedBox(height: 5),
-          Text("${project.progress ?? 0}% complete", style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          const Spacer(),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMiniAvatars(),
-              _buildSmallBadge(project.status ?? "Active", Colors.orange.shade50, Colors.orange),
-            ],
-          )
-        ],
-      ),
-    ),
-  );
-}
-
-Widget _buildTaskCard(TaskEntity task) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: const Color(0xFFE1E8F0)),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.info_outline, color: Color(0xFF4384B6), size: 20),
-        const SizedBox(width: 12),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 🔹 Title
+              const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+              const SizedBox(width: 8),
               Text(
                 task.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D3B66),
+                  color: primaryColor,
+                  fontSize: 15,
                 ),
-              ),
-
-              const SizedBox(height: 6),
-
-              // 🔹 Assigned User
-              Text(
-                "Assigned to: ${task.assignedUser ?? "Unassigned"}",
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-
-              const SizedBox(height: 8),
-
-              // 🔹 Chips Row
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  // Delay
-                  _buildStatusChip(
-                    "${task.delayPercent ?? 0}% delay",
-                    Colors.orange.shade50,
-                    Colors.orange,
-                  ),
-
-                  // Project Tag
-                  _buildStatusChip(
-                    task.tag,
-                    Colors.grey.shade100,
-                    Colors.grey.shade700,
-                  ),
-
-                  // Priority
-                  _buildPriorityChip(task.priority ?? "Medium"),
-                ],
               ),
             ],
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildPriorityChip(String priority) {
-  Color color;
-
-  switch (priority) {
-    case "High":
-      color = Colors.red;
-      break;
-    case "Medium":
-      color = Colors.orange;
-      break;
-    default:
-      color = Colors.green;
-  }
-
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      priority,
-      style: TextStyle(
-        color: color,
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-  );
-}
-
-
-// ميثود مساعدة لشكل الـ Chip
-Widget _buildStatusChip(String label, Color bgColor, Color textColor) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-    child: Text(label, style: TextStyle(fontSize: 10, color: textColor, fontWeight: FontWeight.w500)),
-  );
-}
-// دالة مساعدة للـ Badges الصغيره
-Widget _buildSmallBadge(String text, Color bg, Color textCol) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-    child: Text(text, style: TextStyle(fontSize: 11, color: textCol, fontWeight: FontWeight.w500)),
-  );
-}
-
-  Widget _buildMiniAvatars() {
-    return const SizedBox(
-      width: 40,
-      height: 20,
-      child: Stack(
-        children: [
-          CircleAvatar(radius: 10, backgroundColor: Colors.blue),
-          Positioned(left: 12, child: CircleAvatar(radius: 10, backgroundColor: Colors.red)),
+          Padding(
+            padding: const EdgeInsets.only(left: 28, top: 4),
+            child: Text(
+              "Due Dec 12, 2025",
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildTag(
+                "70% chance of delay",
+                Colors.blue.shade50,
+                Colors.blue.shade700,
+              ),
+              const SizedBox(width: 10),
+              _buildTag("Design System", Colors.grey.shade100, Colors.blueGrey),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _activityItem(IconData icon, Color bgColor, String title, String time) {
+  Widget _buildTag(String text, Color bg, Color textCol) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textCol,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  // --- Projects Section ---
+  Widget _buildProjectsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Active Projects",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
+        ),
+        const SizedBox(height: 15),
+        SizedBox(
+          height: 130,
+          child: BlocBuilder<ProjectsCubit, ProjectsState>(
+            builder: (context, state) {
+              final projects = context.read<ProjectsCubit>().projectsList;
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: projects.length,
+                itemBuilder: (context, index) {
+                  final project = projects[index] as Project;
+
+                  return _buildProjectCard(project);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ التعديل الجديد لكارت المشروع مع الـ Navigation
+  Widget _buildProjectCard(dynamic project) {
+    return GestureDetector(
+      onTap: () {
+        // الانتقال لصفحة التفاصيل اللي في الـ Architecture بتاعتك
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectDetailsScreen(project: project),
+          ),
+        );
+      },
+      child: Container(
+        width: 200,
+        margin: const EdgeInsets.only(right: 15, bottom: 5),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.blue.shade100, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              project.name ?? "Untitled Project",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 15),
+            // عرض النسبة المئوية %
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Progress",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                Text(
+                  "75%",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: 0.75, // هنا هتحط النسبة الحقيقية من الداتا
+              backgroundColor: Colors.blue.shade50,
+              color: Colors.blue,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Activity Section ---
+  Widget _buildRecentActivitySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Recent Activity",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
+        ),
+        const SizedBox(height: 15),
+        _activityItem(
+          Icons.check_circle_outline,
+          "You completed Assignment: React Fundamentals",
+          "3 hours ago",
+          Colors.blue,
+        ),
+        _activityItem(
+          Icons.file_upload_outlined,
+          "Sara uploaded Lab Report 5",
+          "5 hours ago",
+          Colors.blue,
+        ),
+        _activityItem(
+          Icons.person_add_outlined,
+          "${widget.userName} joined Team: Mobile Development",
+          "1 day ago",
+          Colors.blue,
+        ),
+      ],
+    );
+  }
+
+  Widget _activityItem(IconData icon, String title, String time, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(backgroundColor: bgColor, child: Icon(icon, color: const Color(0xFF4384B6), size: 20)),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, color: Color(0xFF3E5C76), fontWeight: FontWeight.w500)),
-                Text(time, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  time,
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
+  // --- Bottom Nav ---
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       currentIndex: _selectedIndex,
-      onTap: (index) => setState(() => _selectedIndex = index),
+      onTap: (i) => setState(() => _selectedIndex = i),
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF0D3B66),
-      unselectedItemColor: Colors.grey.shade400,
+      selectedItemColor: primaryColor,
+      unselectedItemColor: Colors.blueGrey.shade300,
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
-        BottomNavigationBarItem(icon: Icon(Icons.assessment_outlined), label: "Projects"),
-        BottomNavigationBarItem(icon: Icon(Icons.check_box_outlined), label: "Tasks"),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Chat"),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: "Home",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.folder_outlined),
+          activeIcon: Icon(Icons.folder),
+          label: "Projects",
+        ), // Custom logic for Projects
+        BottomNavigationBarItem(
+          icon: Icon(Icons.check_box_outlined),
+          label: "Tasks",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble_outline),
+          label: "Chat",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          label: "Profile",
+        ),
       ],
     );
   }

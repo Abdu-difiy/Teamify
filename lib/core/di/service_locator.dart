@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teamify/core/network/api_client.dart';
 import 'package:teamify/core/storage/token_storage.dart';
 import 'package:teamify/features/projects/presentation/cubit/activity_cubit.dart';
+import 'package:teamify/features/projects/domain/usecases/add_project_usecase.dart';
 import 'package:teamify/features/tasks/presentation/cubit/task_cubit.dart';
 import '../network/dio_client.dart';
 
@@ -33,14 +34,12 @@ import 'package:teamify/features/projects/domain/repositories/project_repository
 import 'package:teamify/features/projects/domain/usecases/get_projects_usecase.dart';
 import 'package:teamify/features/projects/presentation/cubit/projects_cubit.dart';
 
-// Forgot Password UseCases
+// Forgot Password UseCases & Cubit
 import '../../features/auth/domain/usecases/send_otp_usecase.dart';
 import '../../features/auth/domain/usecases/verify_otp_usecase.dart';
 import '../../features/auth/domain/usecases/reset_password_usecase.dart';
-
-// Forgot Password Cubit
 import '../../features/auth/presentation/cubit/forgot_password_cubit.dart';
-import 'package:teamify/features/auth/presentation/cubit/forgot_password_cubit.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -71,21 +70,18 @@ Future<void> init() async {
   }
 
   /// ------------------ Auth Feature ------------------
-  // Data Source
   if (!sl.isRegistered<AuthRemoteDataSource>()) {
     sl.registerLazySingleton<AuthRemoteDataSource>(
       () => AuthRemoteDataSourceImpl(sl<ApiClient>()),
     );
   }
 
-  // Repository
   if (!sl.isRegistered<AuthRepository>()) {
     sl.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(sl<AuthRemoteDataSource>(), sl<TokenStorage>()),
     );
   }
 
-  // UseCases
   if (!sl.isRegistered<RegisterUseCase>()) {
     sl.registerLazySingleton(() => RegisterUseCase(sl<AuthRepository>()));
     sl.registerLazySingleton(() => LoginUseCase(sl<AuthRepository>()));
@@ -111,7 +107,6 @@ Future<void> init() async {
     );
   }
 
-  // Auth Cubits
   if (!sl.isRegistered<AuthCubit>()) {
     sl.registerFactory(() => AuthCubit(sl<RegisterUseCase>(), sl<TokenStorage>()));
     sl.registerFactory(() => AuthGuardCubit(sl<CheckAuthUseCase>(), sl<LogoutUseCase>()));
@@ -124,49 +119,52 @@ Future<void> init() async {
         sl<LinkedInLoginUseCase>(),
         sl<AppleLoginUseCase>(),
       ),
-    );    
+    );
   }
 
   if (!sl.isRegistered<SendOtpUseCase>()) {
-  sl.registerLazySingleton(() => SendOtpUseCase(sl<AuthRepository>()));
-  sl.registerLazySingleton(() => VerifyOtpUseCase(sl<AuthRepository>()));
-  sl.registerLazySingleton(() => ResetPasswordUseCase(sl<AuthRepository>()));
-}
+    sl.registerLazySingleton(() => SendOtpUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(() => VerifyOtpUseCase(sl<AuthRepository>()));
+    sl.registerLazySingleton(() => ResetPasswordUseCase(sl<AuthRepository>()));
+  }
 
-
-if (!sl.isRegistered<ForgotPasswordCubit>()) {
-  sl.registerFactory(
-    () => ForgotPasswordCubit(
-      sendOtpUseCase: sl(),
-      verifyOtpUseCase: sl(),
-      resetPasswordUseCase: sl(),
-    ),
-  );
-}
+  if (!sl.isRegistered<ForgotPasswordCubit>()) {
+    sl.registerFactory(
+      () => ForgotPasswordCubit(
+        sendOtpUseCase: sl(),
+        verifyOtpUseCase: sl(),
+        resetPasswordUseCase: sl(),
+      ),
+    );
+  }
 
   /// ------------------ Projects Feature ------------------
-  // Data Source
+  
   if (!sl.isRegistered<ProjectRemoteDataSource>()) {
     sl.registerLazySingleton<ProjectRemoteDataSource>(
       () => ProjectRemoteDataSourceImpl(sl<Dio>()),
     );
   }
 
-  // Repository
   if (!sl.isRegistered<ProjectRepository>()) {
     sl.registerLazySingleton<ProjectRepository>(
       () => ProjectRepositoryImpl(sl<ProjectRemoteDataSource>()),
     );
   }
 
-  // UseCase
   if (!sl.isRegistered<GetProjectsUseCase>()) {
     sl.registerLazySingleton(() => GetProjectsUseCase(sl<ProjectRepository>()));
   }
+  
+  if (!sl.isRegistered<AddProjectUseCase>()) {
+    sl.registerLazySingleton(() => AddProjectUseCase(sl<ProjectRepository>()));
+  }
 
-  // ✅ تسجيل الـ Cubits المتبقية بأمان
   if (!sl.isRegistered<ProjectsCubit>()) {
-    sl.registerLazySingleton(() => ProjectsCubit(sl()));
+    sl.registerFactory(() => ProjectsCubit(
+      getProjectsUseCase: sl<GetProjectsUseCase>(), 
+      addProjectUseCase: sl<AddProjectUseCase>(), 
+    ));
   }
 
   if (!sl.isRegistered<ActivityCubit>()) {
@@ -176,4 +174,4 @@ if (!sl.isRegistered<ForgotPasswordCubit>()) {
   if (!sl.isRegistered<TaskCubit>()) {
     sl.registerFactory(() => TaskCubit());
   }
-}
+} // ✅ قفلة الـ init function

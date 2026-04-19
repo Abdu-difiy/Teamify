@@ -3,6 +3,7 @@ import '../models/project_model.dart';
 
 abstract class ProjectRemoteDataSource {
   Future<List<ProjectModel>> getProjects();
+  Future<void> addProject(ProjectModel project);
 }
 
 class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
@@ -13,7 +14,7 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
   @override
   Future<List<ProjectModel>> getProjects() async {
     try {
-      // محاولة جلب البيانات من السيرفر
+      // بنحاول نجيب البيانات الحقيقية
       final response = await dio.get("/projects");
       final List data = response.data;
 
@@ -21,20 +22,25 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
           .map((json) => ProjectModel.fromJson(json))
           .toList();
     } catch (e) {
-      // لو حصل أي خطأ (زي مشكلة الـ Host اللي ظهرت لك)، هينفذ الكود اللي هنا
-      return [
-        ProjectModel(
-          id: "1",
-          name: "Project Alpha",
-          description: "A project about building a new app.",
-          startDate: DateTime.now().subtract(const Duration(days: 30)),
-          endDate: DateTime.now().add(const Duration(days: 60)),
-          status: "Active",
-          progress: 45,
-          members: ["Alice", "Bob", "Charlie"], // تأكد هل اسمها member ولا members في الـ Model
-        ),
-      
-      ];
+      // ✅ التعديل الجوهري: بلاش بيانات وهمية عشان تعرف المشكلة فين
+      // كدة لو السيرفر مش شغال هيطلع لك Error حقيقي تحله
+      rethrow; 
+    }
+  }
+
+  @override
+  Future<void> addProject(ProjectModel project) async {
+    try {
+      final response = await dio.post(
+        "/projects", 
+        data: project.toJson(),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception("Failed to add project");
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 }
